@@ -1,16 +1,17 @@
+import os
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-uzgbikwk_h7(l27r&ru_c$k=)!r##+d3x$%y5-yxb!q0ww0i3n'
+# Read SECRET_KEY from environment; fall back to insecure default for local dev only
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-uzgbikwk_h7(l27r&ru_c$k=)!r##+d3x$%y5-yxb!q0ww0i3n')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # CORS should come early
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # serve static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -61,17 +63,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'vitallog_backend.wsgi.application'
 
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'project',
-        'USER': 'postgres',
-        'PASSWORD': 'Druvath@123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+# Database — use DATABASE_URL env var on Render; fall back to local PostgreSQL
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'project',
+            'USER': 'postgres',
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -97,6 +105,8 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -114,7 +124,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# CORS settings - allow frontend React app at localhost:3000
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
+# CORS settings — read from env var; defaults to local React dev server
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS', 'http://localhost:3000'
+).split(',')
