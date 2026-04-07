@@ -1,17 +1,32 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-uzgbikwk_h7(l27r&ru_c$k=)!r##+d3x$%y5-yxb!q0ww0i3n')
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# SECURITY WARNING: keep the secret key used in production secret!
+_secret_key = os.environ.get('SECRET_KEY')
+if not _secret_key:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "SECRET_KEY environment variable must be set in production (when DEBUG is False)."
+        )
+    _secret_key = 'django-insecure-uzgbikwk_h7(l27r&ru_c$k=)!r##+d3x$%y5-yxb!q0ww0i3n'
+SECRET_KEY = _secret_key
+
+_allowed_hosts = os.environ.get('ALLOWED_HOSTS', '')
+if not _allowed_hosts:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "ALLOWED_HOSTS environment variable must be set in production (when DEBUG is False)."
+        )
+    _allowed_hosts = 'localhost,127.0.0.1'
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(',') if h.strip()]
 
 # Application definition
 INSTALLED_APPS = [
